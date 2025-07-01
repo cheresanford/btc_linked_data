@@ -1,0 +1,9 @@
+PREFIX ex:<http://example.org/btc#>
+SELECT ?valor ?hora
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     ex:priceValue ?valor ;
+     <http://www.w3.org/ns/sosa/resultTime> ?hora .
+}
+ORDER BY DESC(?valor)
+LIMIT 5

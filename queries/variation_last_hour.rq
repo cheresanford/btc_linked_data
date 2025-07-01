@@ -1,0 +1,10 @@
+PREFIX ex:<http://example.org/btc#>
+PREFIX sosa:<http://www.w3.org/ns/sosa/>
+PREFIX xsd:<http://www.w3.org/2001/XMLSchema#>
+SELECT (MAX(?v)-MIN(?v) AS ?variacao)
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     ex:priceValue ?v ;
+     sosa:resultTime ?t .
+  FILTER(?t >= NOW() - xsd:dayTimeDuration("PT1H"))
+}

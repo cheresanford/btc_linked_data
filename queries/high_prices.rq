@@ -1,0 +1,13 @@
+PREFIX ex:    <http://example.org/btc#>
+PREFIX sosa:  <http://www.w3.org/ns/sosa/>
+PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?obs ?valor ?hora
+WHERE {
+  ?obs a ex:BitcoinPriceObservation ;
+       ex:priceValue ?valor ;
+       sosa:resultTime ?hora .
+  FILTER(xsd:float(?valor) > 350000)
+}
+ORDER BY DESC(?hora)
+LIMIT 5

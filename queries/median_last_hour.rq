@@ -1,0 +1,11 @@
+PREFIX ex:   <http://example.org/btc#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT (MEDIAN(?v) AS ?mediana)
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     ex:priceValue ?v ;
+     sosa:resultTime ?t .
+  FILTER(?t >= NOW() - "PT1H"^^xsd:duration)
+}

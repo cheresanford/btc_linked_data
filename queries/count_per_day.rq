@@ -1,0 +1,10 @@
+PREFIX ex:<http://example.org/btc#>
+PREFIX sosa:<http://www.w3.org/ns/sosa/>
+SELECT ?dia (COUNT(*) AS ?leituras)
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     sosa:resultTime ?t .
+  BIND(substr(str(?t),1,10) AS ?dia)
+}
+GROUP BY ?dia
+ORDER BY DESC(?dia)

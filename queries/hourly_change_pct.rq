@@ -1,0 +1,16 @@
+PREFIX ex:   <http://example.org/btc#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?horaInicio
+       ( (LAST(?v) - FIRST(?v)) / FIRST(?v) * 100 AS ?pct )
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     ex:priceValue ?v ;
+     sosa:resultTime ?t .
+  FILTER(?t >= NOW() - "P1D"^^xsd:duration)
+  BIND( SUBSTR(STR(?t),1,13) AS ?horaInicio )   # yyyy-MM-ddTHH
+}
+GROUP BY ?horaInicio
+ORDER BY DESC(?horaInicio)
+LIMIT 24

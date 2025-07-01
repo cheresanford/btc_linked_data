@@ -1,0 +1,15 @@
+PREFIX ex:   <http://example.org/btc#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?dia (MAX(?v) AS ?max) (MIN(?v) AS ?min)
+WHERE {
+  ?o a ex:BitcoinPriceObservation ;
+     ex:priceValue ?v ;
+     sosa:resultTime ?t .
+  FILTER(?t >= NOW() - "P7D"^^xsd:duration)
+  BIND ( SUBSTR(STR(?t),1,10) AS ?dia )         # yyyy-MM-dd
+}
+GROUP BY ?dia
+ORDER BY DESC(?dia)
+LIMIT 7

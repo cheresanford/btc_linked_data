@@ -1,0 +1,24 @@
+PREFIX ex:   <http://example.org/btc#>
+PREFIX sosa: <http://www.w3.org/ns/sosa/>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?dia (COUNT(*) AS ?numSpikes)
+WHERE {
+  ?prev a ex:BitcoinPriceObservation ;
+        ex:priceValue ?prevVal ;
+        sosa:resultTime ?prevTime .
+
+  ?curr a ex:BitcoinPriceObservation ;
+        ex:priceValue ?currVal ;
+        sosa:resultTime ?currTime .
+
+  FILTER(?currTime > ?prevTime &&
+         ?currTime <= ?prevTime + "PT1M"^^xsd:duration &&
+         ?currVal  >= ?prevVal * 1.05)
+
+  BIND ( SUBSTR(STR(?currTime),1,10) AS ?dia )
+  FILTER(?currTime >= NOW() - "P7D"^^xsd:duration)
+}
+GROUP BY ?dia
+ORDER BY DESC(?dia)
+LIMIT 7

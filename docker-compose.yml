@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  fuseki:
+    image: stain/jena-fuseki:5.1.0
+    container_name: fuseki
+    restart: unless-stopped
+    environment:
+      - ADMIN_PASSWORD=admin
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./fuseki-data:/fuseki
+
+  generator:
+    build: ./generator
+    container_name: btc-generator
+    depends_on:
+      - fuseki
+    environment:
+      - FUSEKI_UPDATE=http://fuseki:3030/btc/update
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    container_name: btc-dashboard
+    volumes:
+      - ./queries:/app/queries:ro
+      - ./dashboard/streamlit_app.py:/app/streamlit_app.py
+    depends_on:
+      - fuseki
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FUSEKI_QUERY=http://fuseki:3030/btc/query
