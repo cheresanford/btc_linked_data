@@ -186,7 +186,11 @@ if "df" in st.session_state and "sel" in st.session_state:
                 template="plotly_white",
                 labels={df.columns[0]: "Data"}
             )
-            fig.update_layout(legend_title_text="Legenda")
+            fig.update_traces(stackgroup=None)
+            fig.update_layout(
+                legend_title_text="Legenda",
+                yaxis=dict(autorange="reversed")  
+            )
             st.plotly_chart(fig, use_container_width=True)
 
         elif gtype == "line_spike":
