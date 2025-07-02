@@ -164,9 +164,14 @@ if "df" in st.session_state and "sel" in st.session_state:
     else:
         st.dataframe(df, height=300, use_container_width=True)
 
+        # Visualizações específicas
         gtype = QUERIES[sel]["type"]
 
-        if gtype == "bar":
+        # Proteção contra consultas com 1 coluna só
+        if df.shape[1] < 2 and gtype not in {"metric"}:
+            st.warning("A consulta retornou apenas uma coluna. Nenhum gráfico foi gerado.")
+        
+        elif gtype == "bar":
             fig = px.bar(
                 df,
                 x=df.columns[0],
@@ -186,11 +191,7 @@ if "df" in st.session_state and "sel" in st.session_state:
                 template="plotly_white",
                 labels={df.columns[0]: "Data"}
             )
-            fig.update_traces(stackgroup=None)
-            fig.update_layout(
-                legend_title_text="Legenda",
-                yaxis=dict(autorange="reversed")  
-            )
+            fig.update_layout(legend_title_text="Legenda")
             st.plotly_chart(fig, use_container_width=True)
 
         elif gtype == "line_spike":
@@ -208,10 +209,14 @@ if "df" in st.session_state and "sel" in st.session_state:
             st.plotly_chart(fig, use_container_width=True)
 
         elif gtype == "metric":
-            val = float(df.iloc[0, 0])
-            st.metric(QUERIES[sel]["title"], f"R$ {val:,.2f}")
+            try:
+                col = df.select_dtypes(include="number").columns[0]
+                val = float(df[col].iloc[0])
+                st.metric(QUERIES[sel]["title"], f"R$ {val:,.2f}")
+            except Exception:
+                st.warning("Valor numérico não encontrado para exibir como métrica.")
 
-        else:  # linha padrão
+        else:  # line padrão
             fig = px.line(
                 df.sort_values(df.columns[0]),
                 x=df.columns[0],
@@ -222,6 +227,7 @@ if "df" in st.session_state and "sel" in st.session_state:
                 labels={df.columns[0]: "Horário", df.columns[1]: "Valor (BRL)"}
             )
             st.plotly_chart(fig, use_container_width=True)
+
 
         # Download
         st.download_button(
