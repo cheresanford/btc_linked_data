@@ -1,48 +1,53 @@
-"""
-Gera observações RDF com preço simulado do Bitcoin a cada 5 s
-e faz INSERT DATA no Fuseki.
-"""
-import os, time, random, requests
-from rdflib import Graph, Namespace, URIRef, Literal
+import requests
+import time
+from datetime import datetime, timezone
+
+
+from rdflib import Graph, Namespace, Literal, URIRef
 from rdflib.namespace import RDF, XSD
+from uuid import uuid4
 
-time.sleep(10)
-EX     = Namespace("http://example.org/btc#")
-SOSA   = Namespace("http://www.w3.org/ns/sosa/")
-SCHEMA = Namespace("http://schema.org/")
+FUSEKI_ENDPOINT = "http://fuseki:3030/btc"
+HEADERS = {
+    "User-Agent": "btc-dashboard-tcc/1.0"
+}
+NS = Namespace("http://example.org/btc#")
+SOSA = Namespace("http://www.w3.org/ns/sosa/")
 
-# URL de atualização SPARQL (dataset btc)
-FUSEKI_UPDATE = os.getenv("FUSEKI_UPDATE", "http://localhost:3030/btc/update")
+def get_latest_btc_price():
+    url = "https://api.coingecko.com/api/v3/simple/price"
+    params = {
+        "ids": "bitcoin",
+        "vs_currencies": "brl"
+    }
+    r = requests.get(url, params=params, headers=HEADERS)
+    r.raise_for_status()
+    return r.json()["bitcoin"]["brl"]
 
-# ---------- envia metadados estáticos (apenas 1ª execução) ----------
-static = Graph()
-static.bind("ex", EX); static.bind("sosa", SOSA)
-static.add((EX.btcSensor, RDF.type, SOSA.Sensor))
-static.add((EX.btcSensor, SOSA.observes, EX.Bitcoin))
-requests.post(FUSEKI_UPDATE, data={"update": static.serialize(format="nt")})
-
-# ---------- loop de streaming ----------
-while True:
+def post_price_to_fuseki(price: float, timestamp: str):
     g = Graph()
-    g.bind("ex", EX); g.bind("sosa", SOSA)
-    
-    ts   = time.strftime('%Y-%m-%dT%H:%M:%S')
-    obs  = URIRef(f"http://example.org/btc/obs/{int(time.time())}")
-    val  = round(random.uniform(300000, 400000), 2)   # valor fictício em BRL
+    obs_uri = URIRef(f"{NS}obs-{uuid4()}")
 
-    g.add((obs, RDF.type, EX.BitcoinPriceObservation))
-    g.add((obs, RDF.type, SOSA.Observation))      
-    g.add((obs, SOSA.madeBySensor, EX.btcSensor))
-    g.add((obs, SOSA.hasFeatureOfInterest, EX.Bitcoin))
-    g.add((obs, SOSA.resultTime, Literal(ts, datatype=XSD.dateTime)))
-    g.add((obs, EX.priceValue, Literal(val, datatype=XSD.float)))
-    g.add((obs, EX.currency, Literal("BRL", datatype=XSD.string)))
-    g.add((obs, SOSA.hasSimpleResult, Literal(val, datatype=XSD.float)))
+    g.add((obs_uri, RDF.type, NS.BitcoinPriceObservation))
+    g.add((obs_uri, NS.priceValue, Literal(price, datatype=XSD.float)))
+    g.add((obs_uri, SOSA.resultTime, Literal(timestamp, datatype=XSD.dateTime)))
 
+    data = g.serialize(format="nt")
+    r = requests.post(f"{FUSEKI_ENDPOINT}/data", data=data,
+                      headers={"Content-Type": "application/n-triples"},
+                      auth=("admin", "admin"))
+    r.raise_for_status()
 
-    nt = g.serialize(format="nt")
-    resp = requests.post(FUSEKI_UPDATE, data={"update": f"INSERT DATA {{ {nt} }}"}, auth=('admin', 'admin'))
-    if resp.status_code != 200:
-        print("ERRO →", resp.status_code, resp.text[:120])
-    print(f"[{ts}] Preço simulado R$ {val}")
-    time.sleep(5)
+if __name__ == "__main__":
+    print("Iniciando coleta de preços em tempo real...")
+
+    while True:
+        try:
+            price = get_latest_btc_price()
+            timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+            print(f"[{timestamp}] BTC = R$ {price:,.2f}")
+            post_price_to_fuseki(price, timestamp)
+        except Exception as e:
+            print(f"Erro ao processar: {e}")
+
+        time.sleep(20)  # espera 20 segundos para a próxima coleta
